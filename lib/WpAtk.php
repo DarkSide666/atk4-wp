@@ -25,6 +25,8 @@ class WpAtk extends App_Web
 
 	public $ajaxMode = false;
 
+	public $shortcodeInitialised = false;
+
 	//ATK43 init
 	/** When page is determined, it's class instance is created and stored in here */
 	public $page_object=null;
@@ -66,6 +68,20 @@ class WpAtk extends App_Web
 		$this->add( 'Wp_WpJui' );
 		$this->template->trySet('action', $this->pluginName);
 
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function isShortcodeInitialised() {
+		return $this->shortcodeInitialised;
+	}
+
+	/**
+	 * @param boolean $shortcodeInitialised
+	 */
+	public function setShortcodeInitialised( $shortcodeInitialised ) {
+		$this->shortcodeInitialised = $shortcodeInitialised;
 	}
 
 
@@ -287,19 +303,33 @@ class WpAtk extends App_Web
 	public function registerShortcode( $key, $shortcode ) {
 		$self = $this;
 		add_shortcode( $shortcode['name'], function ( $args ) use ( $key, $shortcode, $self ) {
-			$sc = $self->add( $shortcode['uses'], [ 'id' => $key, 'name'=> $shortcode['name'], 'needAtkJs' => $shortcode['atkjs'], 'args' => $args] );
-			if ( isset($shortcode['js'])){
-				$this->enqueueCtrl->enqueueFiles( $shortcode['js'], 'js', ['start-atk4']);
-			}
-			if ( isset($shortcode['css'])){
-				$this->enqueueCtrl->enqueueFiles( $shortcode['css'], 'css');
+
+			if( is_object( $shortcode['uses'])  && ($shortcode['uses'] instanceof Closure) ){
+				 return $shortcode['uses']->call($self, $args);
+			} else {
+				$sc = $self->add( $shortcode['uses'],
+					[ 'id'          => $key,
+					  'name'        => $shortcode['name'],
+					  'needAtkJs'   => $shortcode['atkjs'],
+					  'jsFiles'     => $shortcode['js'],
+					  'cssFiles'    => $shortcode['css'],
+					  'args'        => $args
+					]);
+				/*if ( isset($shortcode['js'])){
+					$this->enqueueCtrl->enqueueFiles( $shortcode['js'], 'js', ['start-atk4']);
+				}
+				if ( isset($shortcode['css'])){
+					$this->enqueueCtrl->enqueueFiles( $shortcode['css'], 'css');
+				}*/
+				$scHtml = $sc->getHtml();
+//			$scHtml = $self->getAppHtml();
+//			$self->clearAppHtml();
+//			$self->removeElement($sc->short_name);
+
+				return $scHtml;
 			}
 
-			$scHtml = $self->getAppHtml();
-			$self->clearAppHtml();
-			$self->removeElement($sc->short_name);
 
-			return $scHtml;
 		});
 		//add this shortcode to our panel list.
 		//This will allow to get ajax working.
@@ -407,6 +437,9 @@ class WpAtk extends App_Web
 
 	public function defaultTemplate()
 	{
+		if( ! is_admin() ){
+			$t= 'test';
+		}
 		return ['wp-html'];
 	}
 
@@ -415,7 +448,9 @@ class WpAtk extends App_Web
 	public function render()
 	{
 		$this->hook('pre-js-collection');
-		if(isset($this->app->jquery) && $this->app->jquery)$this->app->jquery->getJS($this);
+		if(isset($this->app->jquery) && $this->app->jquery){
+			$this->app->jquery->getJS($this);
+		}
 
 		if(!($this->template)){
 			throw new BaseException("You should specify template for API object");
@@ -487,11 +522,6 @@ class WpAtk extends App_Web
 	{
 		$layout = $this->layout ?: $this;
 		$this->page_object = $layout->add($this->panel['class'], [ 'name' => $this->panel['id'], 'id' => $this->panel['id']]);
-		/*if ( is_admin() ){
-			$this->page_object = $layout->add($this->panel['class'], [ 'name' => $this->panel['id'], 'id' => $this->panel['id']]);
-		} else {
-			$this->page_object = $layout->add($this->panel['class'], [ 'name' => $this->panel['id'], 'id' => $this->panel['id']]);
-		}*/
 	}
 
 	public function getWpPageUrl()

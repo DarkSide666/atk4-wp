@@ -22,7 +22,7 @@ class Wp_WpPanel extends AbstractView
 	}
 
 	function defaultTemplate(){
-		return array('page');
+		return ['wp-panel'];
 		/*$page_name='page/'.strtolower($this->short_name);
 		// See if we can locate the page
 		try{
