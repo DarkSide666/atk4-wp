@@ -68,6 +68,35 @@ class WpAtk extends App_Web
 		$this->add( 'Wp_WpJui' );
 		$this->template->trySet('action', $this->pluginName);
 
+		//add_action('wp', [$this, 'wpLoaded']);
+
+		/*function my_flush_rules()
+		{
+			$rules = get_option( 'rewrite_rules' );
+			if ( ! isset( $rules['(project)/(\d*)$'] ) ) {
+				global $wp_rewrite; $wp_rewrite->flush_rules();
+			}
+		}*/
+		//add_action( 'wp_loaded',[$this, 'flushRules'] );
+
+	}
+
+	public function wpLoaded()
+	{
+		$test = get_query_var('page');
+		if( $download = get_query_var('download')){
+			$downloader = $this->add('tddSc\Controller\Downloader');
+			$downloader->doDownload( $download );
+			//exit;
+		};
+	}
+
+	public function flushRules( $e )
+	{
+		$rules = get_option( 'rewrite_rules' );
+		if ( ! isset( $rules['(project)/(\d*)$'] ) ) {
+			global $wp_rewrite; $wp_rewrite->flush_rules();
+		}
 	}
 
 	/**
